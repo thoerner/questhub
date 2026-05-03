@@ -2,6 +2,14 @@ export type RepoFile = {
   name: string;
   type: "file" | "dir";
   path: string;
+  size?: number;
+};
+
+export type FileContent = {
+  name: string;
+  path: string;
+  content: string;
+  size: number;
 };
 
 export type Commit = {

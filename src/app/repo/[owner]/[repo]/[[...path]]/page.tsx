@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { fetchQuestRepo } from "@/lib/github";
+import { fetchQuestRepo, fetchDirContents, fetchFileContent } from "@/lib/github";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { TopBar } from "@/components/rpg/top-bar";
@@ -11,15 +11,18 @@ import { ReadmeTome } from "@/components/rpg/readme-tome";
 import { AboutPanel } from "@/components/rpg/about-panel";
 import { ContributionMap } from "@/components/rpg/contribution-map";
 import { CommitTerminal } from "@/components/rpg/commit-terminal";
+import { Breadcrumb } from "@/components/rpg/breadcrumb";
+import { CodeViewer } from "@/components/rpg/code-viewer";
 
 type PageProps = {
-  params: Promise<{ owner: string; repo: string }>;
+  params: Promise<{ owner: string; repo: string; path?: string[] }>;
 };
 
 export async function generateMetadata({ params }: PageProps) {
-  const { owner, repo } = await params;
+  const { owner, repo, path } = await params;
+  const suffix = path?.length ? ` / ${path[path.length - 1]}` : "";
   return {
-    title: `${owner}/${repo} — QuestHub`,
+    title: `${owner}/${repo}${suffix} — QuestHub`,
     description: `RPG-themed dashboard for ${owner}/${repo}`,
   };
 }
@@ -38,10 +41,59 @@ async function getAccessToken(): Promise<string | undefined> {
   }
 }
 
-export default async function RepoPage({ params }: PageProps) {
-  const { owner, repo } = await params;
-  const accessToken = await getAccessToken();
+function parsePath(segments?: string[]) {
+  if (!segments || segments.length === 0) {
+    return { view: "dashboard" as const, ref: "", filePath: "" };
+  }
+  const [viewType, ref, ...rest] = segments;
+  if ((viewType === "tree" || viewType === "blob") && ref) {
+    return { view: viewType, ref, filePath: rest.join("/") };
+  }
+  notFound();
+}
 
+export default async function RepoPage({ params }: PageProps) {
+  const { owner, repo, path: pathSegments } = await params;
+  const accessToken = await getAccessToken();
+  const { view, ref, filePath } = parsePath(pathSegments);
+
+  if (view === "dashboard") {
+    return <DashboardView owner={owner} repo={repo} accessToken={accessToken} />;
+  }
+
+  if (view === "tree") {
+    return (
+      <BrowseView
+        owner={owner}
+        repo={repo}
+        branch={ref}
+        filePath={filePath}
+        accessToken={accessToken}
+      />
+    );
+  }
+
+  // view === "blob"
+  return (
+    <FileView
+      owner={owner}
+      repo={repo}
+      branch={ref}
+      filePath={filePath}
+      accessToken={accessToken}
+    />
+  );
+}
+
+async function DashboardView({
+  owner,
+  repo,
+  accessToken,
+}: {
+  owner: string;
+  repo: string;
+  accessToken?: string;
+}) {
   let data;
   try {
     data = await fetchQuestRepo(owner, repo, accessToken);
@@ -64,12 +116,10 @@ export default async function RepoPage({ params }: PageProps) {
       />
 
       <div className="flex-1 flex flex-col lg:flex-row gap-3 p-3">
-        {/* Left sidebar */}
         <aside className="w-full lg:w-52 shrink-0">
           <InventorySidebar repo={data} />
         </aside>
 
-        {/* Center content */}
         <main className="flex-1 min-w-0 space-y-3">
           <div className="ornate-border rounded-sm bg-surface-raised p-3 space-y-3">
             <RepoHeader repo={data} />
@@ -85,7 +135,9 @@ export default async function RepoPage({ params }: PageProps) {
                     <div className="pt-3">
                       <FileScroll
                         files={data.files}
-                        defaultBranch={data.defaultBranch}
+                        owner={owner}
+                        repo={repo}
+                        branch={data.defaultBranch}
                         latestCommit={data.latestCommits[0]}
                         totalCommits={data.totalCommits}
                         branchCount={data.branchCount}
@@ -101,7 +153,7 @@ export default async function RepoPage({ params }: PageProps) {
                   count: data.openIssues,
                   content: (
                     <div className="py-8 text-center text-text-muted text-sm">
-                      Issue tracking coming in Phase 3.
+                      Issue tracking coming in a future phase.
                     </div>
                   ),
                 },
@@ -112,7 +164,7 @@ export default async function RepoPage({ params }: PageProps) {
                   count: data.openPRs,
                   content: (
                     <div className="py-8 text-center text-text-muted text-sm">
-                      Pull request dashboard coming in Phase 3.
+                      Pull request dashboard coming in a future phase.
                     </div>
                   ),
                 },
@@ -143,7 +195,6 @@ export default async function RepoPage({ params }: PageProps) {
           <ReadmeTome html={data.readmeHtml} />
         </main>
 
-        {/* Right sidebar */}
         <aside className="w-full lg:w-64 shrink-0 space-y-3">
           <AboutPanel repo={data} />
           <ContributionMap weeks={data.contributionWeeks} />
@@ -155,6 +206,94 @@ export default async function RepoPage({ params }: PageProps) {
         <span className="text-accent-gold">PIP-80/13</span>
         <span className="tracking-widest">TERMINAL LINK</span>
       </footer>
+    </div>
+  );
+}
+
+async function BrowseView({
+  owner,
+  repo,
+  branch,
+  filePath,
+  accessToken,
+}: {
+  owner: string;
+  repo: string;
+  branch: string;
+  filePath: string;
+  accessToken?: string;
+}) {
+  let files;
+  try {
+    files = await fetchDirContents(owner, repo, filePath, branch, accessToken);
+  } catch (err: unknown) {
+    const status =
+      err instanceof Object && "status" in err
+        ? (err as { status: number }).status
+        : 500;
+    if (status === 404) notFound();
+    throw err;
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <TopBar />
+
+      <div className="flex-1 max-w-5xl mx-auto w-full p-4 space-y-4">
+        <Breadcrumb owner={owner} repo={repo} branch={branch} path={filePath} />
+
+        <FileScroll
+          files={files}
+          owner={owner}
+          repo={repo}
+          branch={branch}
+          currentPath={filePath}
+        />
+      </div>
+    </div>
+  );
+}
+
+async function FileView({
+  owner,
+  repo,
+  branch,
+  filePath,
+  accessToken,
+}: {
+  owner: string;
+  repo: string;
+  branch: string;
+  filePath: string;
+  accessToken?: string;
+}) {
+  let file;
+  try {
+    file = await fetchFileContent(owner, repo, filePath, branch, accessToken);
+  } catch (err: unknown) {
+    const status =
+      err instanceof Object && "status" in err
+        ? (err as { status: number }).status
+        : 500;
+    if (status === 404) notFound();
+    throw err;
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <TopBar />
+
+      <div className="flex-1 max-w-5xl mx-auto w-full p-4 space-y-4">
+        <Breadcrumb
+          owner={owner}
+          repo={repo}
+          branch={branch}
+          path={filePath}
+          isFile
+        />
+
+        <CodeViewer file={file} />
+      </div>
     </div>
   );
 }

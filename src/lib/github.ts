@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest";
-import type { QuestRepo, RepoFile, Commit, Contributor } from "./types";
+import type { QuestRepo, RepoFile, FileContent, Commit, Contributor } from "./types";
 import { computeOpenIssues, parseLinkCount } from "./utils";
 
 function createOctokit(accessToken?: string) {
@@ -79,6 +79,7 @@ export async function fetchQuestRepo(
         name: f.name,
         type: f.type === "dir" ? ("dir" as const) : ("file" as const),
         path: f.path,
+        size: f.size,
       }))
     : [];
 
@@ -137,5 +138,45 @@ export async function fetchQuestRepo(
     contributors: contributorList,
     contributionWeeks,
   };
+}
+
+export async function fetchDirContents(
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string,
+  accessToken?: string,
+): Promise<RepoFile[]> {
+  const octokit = createOctokit(accessToken);
+  const { data } = await octokit.repos.getContent({ owner, repo, path, ref });
+  if (!Array.isArray(data)) return [];
+  return data.map((f) => ({
+    name: f.name,
+    type: f.type === "dir" ? ("dir" as const) : ("file" as const),
+    path: f.path,
+    size: f.size,
+  }));
+}
+
+const MAX_FILE_SIZE = 1024 * 1024; // 1 MB
+
+export async function fetchFileContent(
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string,
+  accessToken?: string,
+): Promise<FileContent> {
+  const octokit = createOctokit(accessToken);
+  const { data } = await octokit.repos.getContent({ owner, repo, path, ref });
+  if (Array.isArray(data) || data.type !== "file") {
+    throw Object.assign(new Error("Not a file"), { status: 400 });
+  }
+  const size = data.size ?? 0;
+  let content = "";
+  if ("content" in data && data.content && size <= MAX_FILE_SIZE) {
+    content = Buffer.from(data.content, "base64").toString("utf-8");
+  }
+  return { name: data.name, path: data.path, content, size };
 }
 
