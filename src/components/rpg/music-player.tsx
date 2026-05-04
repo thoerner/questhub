@@ -27,6 +27,7 @@ export function MusicPlayer() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
   const [trackIndex, setTrackIndex] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const initializedRef = useRef(false);
@@ -79,9 +80,16 @@ export function MusicPlayer() {
     }
   }, [trackIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.loop = isLooping;
+  }, [isLooping]);
+
   const handleEnded = useCallback(() => {
+    if (isLooping) return;
     setTrackIndex((prev) => (prev + 1) % TRACKS.length);
-  }, []);
+  }, [isLooping]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
@@ -143,9 +151,14 @@ export function MusicPlayer() {
                 ⏭
               </PlayerButton>
             </div>
-            <PlayerButton onClick={toggleMute} label={isMuted ? "Unmute" : "Mute"}>
-              {isMuted ? "🔇" : "🔊"}
-            </PlayerButton>
+            <div className="flex items-center gap-1">
+              <PlayerButton onClick={() => setIsLooping((prev) => !prev)} label={isLooping ? "Disable loop" : "Loop track"}>
+                <span className={isLooping ? "text-accent-gold" : ""}>🔁</span>
+              </PlayerButton>
+              <PlayerButton onClick={toggleMute} label={isMuted ? "Unmute" : "Mute"}>
+                {isMuted ? "🔇" : "🔊"}
+              </PlayerButton>
+            </div>
           </div>
 
           <div className="space-y-px">
