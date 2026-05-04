@@ -6,6 +6,7 @@ const TRACKS = [
   { src: "/audio/ballad-of-the-rusted-kingdom.mp3", title: "Ballad of the Rusted Kingdom" },
   { src: "/audio/commit-at-the-rusted-shrine.mp3", title: "Commit at the Rusted Shrine" },
   { src: "/audio/merge-conflict-at-midnight.mp3", title: "Merge Conflict at Midnight" },
+  { src: "/audio/pull-request-parade.mp3", title: "Pull Request Parade" },
 ];
 
 function loadPrefs() {
