@@ -56,8 +56,12 @@
   scrollbar-color: var(--accent-gold-dim) var(--surface);
 }
 
+html {
+  background: var(--surface) url("/backgrounds/bg-parchment.webp") repeat;
+}
+
 body {
-  background: var(--surface);
+  background: transparent;
   color: var(--text-primary);
   font-family: var(--font-body);
 }

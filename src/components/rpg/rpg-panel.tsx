@@ -18,7 +18,7 @@ export function RpgPanel({
   const bg = {
     default: "bg-surface-raised",
     dark: "bg-surface",
-    parchment: "bg-panel",
+    parchment: "bg-panel bg-[url('/backgrounds/panel-parchment.webp')] bg-repeat bg-[length:256px]",
   }[variant];
 
   return (

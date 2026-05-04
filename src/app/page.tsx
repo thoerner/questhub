@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SearchInput } from "@/components/rpg/search-input";
+import { auth, signIn } from "@/auth";
 
 const exampleRepos = [
   { slug: "facebook/react", label: "React" },
@@ -9,14 +10,19 @@ const exampleRepos = [
   { slug: "thoerner/questhub", label: "QuestHub" },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4">
+    <div className="flex-1 flex flex-col items-center justify-center px-4 bg-[url('/backgrounds/bg-hero-vignette.webp')] bg-cover bg-center bg-no-repeat">
       <div className="w-full max-w-lg text-center space-y-8">
         <div className="space-y-4">
-          <div className="font-display text-accent text-2xl leading-none" aria-hidden="true">
-            ◆
-          </div>
+          <img
+            src="/images/hero-emblem.webp"
+            alt=""
+            aria-hidden="true"
+            className="w-32 h-32 mx-auto drop-shadow-[0_0_12px_rgba(212,169,64,0.4)]"
+          />
           <h1 className="font-display text-lg text-accent-gold glow-gold tracking-widest leading-none">
             QUEST FOR CODE
           </h1>
@@ -42,6 +48,34 @@ export default function Home() {
             ))}
           </div>
         </div>
+
+        {!session?.user && (
+          <div className="ornate-border rounded-sm bg-surface-raised p-5 space-y-3">
+            <div className="font-display text-accent-gold text-2xl leading-none" aria-hidden="true">
+              ⚔
+            </div>
+            <p className="font-display text-xs tracking-wider text-accent-gold">
+              JOIN THE GUILD
+            </p>
+            <p className="text-text-secondary text-sm leading-relaxed">
+              Sign in to unlock private repositories and track your quest
+              progress on your personal dashboard.
+            </p>
+            <form
+              action={async () => {
+                "use server";
+                await signIn("github", { redirectTo: "/dashboard" });
+              }}
+            >
+              <button
+                type="submit"
+                className="px-5 py-2 font-display text-[10px] tracking-wider border border-accent-gold-dim text-accent-gold rounded-sm hover:bg-accent-gold hover:text-surface transition-colors cursor-pointer"
+              >
+                <span className="text-base" aria-hidden="true">◆</span> SIGN IN WITH GITHUB <span className="text-base" aria-hidden="true">◆</span>
+              </button>
+            </form>
+          </div>
+        )}
 
         <div className="flex justify-center gap-4 text-[8px] text-text-muted font-display tracking-wider">
           <span>v1.0.0</span>
