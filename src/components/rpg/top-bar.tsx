@@ -17,12 +17,11 @@ export async function TopBar({ stars, forks, issues, prs }: TopBarProps) {
   return (
     <header className="bg-surface-raised border-b-2 border-accent-gold px-3 py-1.5 flex items-center gap-3">
       <Link href="/" className="flex items-center gap-2 shrink-0">
-        <span className="font-display text-accent text-sm leading-none" aria-hidden="true">
-          ◆
-        </span>
-        <span className="font-display text-[9px] text-accent-gold glow-gold tracking-widest leading-none">
-          QUEST FOR CODE
-        </span>
+        <img
+          src="/images/logo-wide.webp"
+          alt="Quest for Code"
+          className="h-6 w-auto drop-shadow-[0_0_4px_rgba(212,169,64,0.4)]"
+        />
         <span className="text-[8px] text-text-muted font-display leading-none">
           v2.0.0
         </span>
