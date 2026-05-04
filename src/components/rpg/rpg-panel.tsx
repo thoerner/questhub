@@ -24,13 +24,13 @@ export function RpgPanel({
   return (
     <div className={`ornate-border rounded-sm ${bg} ${className}`}>
       {title && (
-        <div className="border-b border-accent-gold-dim px-2.5 py-1">
-          <h3 className="font-display text-[8px] tracking-wider text-accent-gold uppercase leading-none">
+        <div className="border-b border-accent-gold-dim px-3 py-1.5">
+          <h3 className="font-display text-[10px] tracking-wider text-accent-gold uppercase leading-none">
             {title}
           </h3>
         </div>
       )}
-      <div className={compact ? "p-2" : "p-2.5"}>{children}</div>
+      <div className={compact ? "p-2" : "p-3"}>{children}</div>
     </div>
   );
 }
