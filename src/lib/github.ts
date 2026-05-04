@@ -1,6 +1,10 @@
 import { Octokit } from "@octokit/rest";
 import type { QuestRepo, RepoFile, FileContent, Commit, Contributor, IssueItem, IssueListResult } from "./types";
 import { computeOpenIssues, parseLinkCount } from "./utils";
+import { cached } from "./cache";
+
+const TTL_SHORT = 2 * 60 * 1000; // 2 min — commits, issues, PRs
+const TTL_LONG = 5 * 60 * 1000; // 5 min — repo metadata, files, branches
 
 function createOctokit(accessToken?: string) {
   const auth = accessToken || process.env.GITHUB_TOKEN;
@@ -39,7 +43,7 @@ export async function fetchUserRepos(
   }));
 }
 
-export async function fetchQuestRepo(
+async function _fetchQuestRepo(
   owner: string,
   repo: string,
   accessToken?: string,
@@ -140,7 +144,18 @@ export async function fetchQuestRepo(
   };
 }
 
-export async function fetchDirContents(
+export function fetchQuestRepo(
+  owner: string,
+  repo: string,
+  accessToken?: string,
+): Promise<QuestRepo> {
+  if (accessToken) return _fetchQuestRepo(owner, repo, accessToken);
+  return cached(`repo:${owner}/${repo}`, TTL_LONG, () =>
+    _fetchQuestRepo(owner, repo),
+  );
+}
+
+async function _fetchDirContents(
   owner: string,
   repo: string,
   path: string,
@@ -158,9 +173,22 @@ export async function fetchDirContents(
   }));
 }
 
+export function fetchDirContents(
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string,
+  accessToken?: string,
+): Promise<RepoFile[]> {
+  if (accessToken) return _fetchDirContents(owner, repo, path, ref, accessToken);
+  return cached(`dir:${owner}/${repo}:${ref}:${path}`, TTL_LONG, () =>
+    _fetchDirContents(owner, repo, path, ref),
+  );
+}
+
 const MAX_FILE_SIZE = 1024 * 1024; // 1 MB
 
-export async function fetchFileContent(
+async function _fetchFileContent(
   owner: string,
   repo: string,
   path: string,
@@ -180,9 +208,22 @@ export async function fetchFileContent(
   return { name: data.name, path: data.path, content, size };
 }
 
+export function fetchFileContent(
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string,
+  accessToken?: string,
+): Promise<FileContent> {
+  if (accessToken) return _fetchFileContent(owner, repo, path, ref, accessToken);
+  return cached(`file:${owner}/${repo}:${ref}:${path}`, TTL_LONG, () =>
+    _fetchFileContent(owner, repo, path, ref),
+  );
+}
+
 const ITEMS_PER_PAGE = 25;
 
-export async function fetchRepoIssues(
+async function _fetchRepoIssues(
   owner: string,
   repo: string,
   state: "open" | "closed",
@@ -220,7 +261,20 @@ export async function fetchRepoIssues(
   return { items, hasMore };
 }
 
-export async function fetchRepoPulls(
+export function fetchRepoIssues(
+  owner: string,
+  repo: string,
+  state: "open" | "closed",
+  page: number,
+  accessToken?: string,
+): Promise<IssueListResult> {
+  if (accessToken) return _fetchRepoIssues(owner, repo, state, page, accessToken);
+  return cached(`issues:${owner}/${repo}:${state}:${page}`, TTL_SHORT, () =>
+    _fetchRepoIssues(owner, repo, state, page),
+  );
+}
+
+async function _fetchRepoPulls(
   owner: string,
   repo: string,
   state: "open" | "closed",
@@ -257,7 +311,20 @@ export async function fetchRepoPulls(
   return { items, hasMore };
 }
 
-export async function fetchBranches(
+export function fetchRepoPulls(
+  owner: string,
+  repo: string,
+  state: "open" | "closed",
+  page: number,
+  accessToken?: string,
+): Promise<IssueListResult> {
+  if (accessToken) return _fetchRepoPulls(owner, repo, state, page, accessToken);
+  return cached(`pulls:${owner}/${repo}:${state}:${page}`, TTL_SHORT, () =>
+    _fetchRepoPulls(owner, repo, state, page),
+  );
+}
+
+async function _fetchBranches(
   owner: string,
   repo: string,
   accessToken?: string,
@@ -271,7 +338,18 @@ export async function fetchBranches(
   return data.map((b) => b.name);
 }
 
-export async function fetchTags(
+export function fetchBranches(
+  owner: string,
+  repo: string,
+  accessToken?: string,
+): Promise<string[]> {
+  if (accessToken) return _fetchBranches(owner, repo, accessToken);
+  return cached(`branches:${owner}/${repo}`, TTL_LONG, () =>
+    _fetchBranches(owner, repo),
+  );
+}
+
+async function _fetchTags(
   owner: string,
   repo: string,
   accessToken?: string,
@@ -283,5 +361,16 @@ export async function fetchTags(
     per_page: 100,
   });
   return data.map((t) => t.name);
+}
+
+export function fetchTags(
+  owner: string,
+  repo: string,
+  accessToken?: string,
+): Promise<string[]> {
+  if (accessToken) return _fetchTags(owner, repo, accessToken);
+  return cached(`tags:${owner}/${repo}`, TTL_LONG, () =>
+    _fetchTags(owner, repo),
+  );
 }
 
