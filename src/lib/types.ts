@@ -26,6 +26,23 @@ export type Contributor = {
   contributions: number;
 };
 
+export type IssueItem = {
+  number: number;
+  title: string;
+  state: "open" | "closed";
+  author: string;
+  authorAvatar: string | null;
+  createdAt: string;
+  commentsCount: number;
+  labels: { name: string; color: string }[];
+  isPR: boolean;
+};
+
+export type IssueListResult = {
+  items: IssueItem[];
+  hasMore: boolean;
+};
+
 export type QuestRepo = {
   name: string;
   owner: string;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { RepoFile, Commit } from "@/lib/types";
 import { fileIcon, sortRepoFiles, formatRelative } from "@/lib/utils";
+import { BranchSelector } from "./branch-selector";
 
 type FileScrollProps = {
   files: RepoFile[];
@@ -8,6 +9,7 @@ type FileScrollProps = {
   repo: string;
   branch: string;
   currentPath?: string;
+  viewType?: "dashboard" | "tree" | "blob";
   latestCommit?: Commit;
   totalCommits?: number;
   branchCount?: number;
@@ -21,6 +23,7 @@ export function FileScroll({
   repo,
   branch,
   currentPath,
+  viewType = "dashboard",
   latestCommit,
   totalCommits,
   branchCount,
@@ -49,9 +52,13 @@ export function FileScroll({
     <div className={className}>
       {/* Branch/tag bar */}
       <div className="flex items-center gap-2 mb-2 flex-wrap">
-        <span className="px-2 py-0.5 text-[10px] border border-border-subtle rounded-sm bg-surface-overlay text-text-secondary font-medium">
-          📌 {branch} ▾
-        </span>
+        <BranchSelector
+          owner={owner}
+          repo={repo}
+          currentRef={branch}
+          currentPath={currentPath}
+          viewType={viewType}
+        />
         {branchCount != null && (
           <span className="text-[10px] text-text-muted">
             🌿 {branchCount} Branches

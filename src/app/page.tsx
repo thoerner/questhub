@@ -6,6 +6,7 @@ const exampleRepos = [
   { slug: "vercel/next.js", label: "Next.js" },
   { slug: "torvalds/linux", label: "Linux" },
   { slug: "denoland/deno", label: "Deno" },
+  { slug: "thoerner/questhub", label: "QuestHub" },
 ];
 
 export default function Home() {

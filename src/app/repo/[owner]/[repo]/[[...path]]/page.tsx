@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { fetchQuestRepo, fetchDirContents, fetchFileContent } from "@/lib/github";
+import { fetchQuestRepo, fetchDirContents, fetchFileContent, fetchRepoIssues, fetchRepoPulls } from "@/lib/github";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { TopBar } from "@/components/rpg/top-bar";
@@ -13,6 +13,8 @@ import { ContributionMap } from "@/components/rpg/contribution-map";
 import { CommitTerminal } from "@/components/rpg/commit-terminal";
 import { Breadcrumb } from "@/components/rpg/breadcrumb";
 import { CodeViewer } from "@/components/rpg/code-viewer";
+import { IssueList } from "@/components/rpg/issue-list";
+import { BranchSelector } from "@/components/rpg/branch-selector";
 
 type PageProps = {
   params: Promise<{ owner: string; repo: string; path?: string[] }>;
@@ -106,6 +108,11 @@ async function DashboardView({
     throw err;
   }
 
+  const [issuesResult, pullsResult] = await Promise.all([
+    fetchRepoIssues(owner, repo, "open", 1, accessToken).catch(() => ({ items: [], hasMore: false })),
+    fetchRepoPulls(owner, repo, "open", 1, accessToken).catch(() => ({ items: [], hasMore: false })),
+  ]);
+
   return (
     <div className="flex flex-col min-h-screen">
       <TopBar
@@ -152,9 +159,14 @@ async function DashboardView({
                   icon: "🐛",
                   count: data.openIssues,
                   content: (
-                    <div className="py-8 text-center text-text-muted text-sm">
-                      Issue tracking coming in a future phase.
-                    </div>
+                    <IssueList
+                      owner={owner}
+                      repo={repo}
+                      type="issues"
+                      initialItems={issuesResult.items}
+                      initialHasMore={issuesResult.hasMore}
+                      openCount={data.openIssues}
+                    />
                   ),
                 },
                 {
@@ -163,9 +175,14 @@ async function DashboardView({
                   icon: "🔀",
                   count: data.openPRs,
                   content: (
-                    <div className="py-8 text-center text-text-muted text-sm">
-                      Pull request dashboard coming in a future phase.
-                    </div>
+                    <IssueList
+                      owner={owner}
+                      repo={repo}
+                      type="pulls"
+                      initialItems={pullsResult.items}
+                      initialHasMore={pullsResult.hasMore}
+                      openCount={data.openPRs}
+                    />
                   ),
                 },
                 {
@@ -248,6 +265,7 @@ async function BrowseView({
           repo={repo}
           branch={branch}
           currentPath={filePath}
+          viewType="tree"
         />
       </div>
     </div>
@@ -284,13 +302,22 @@ async function FileView({
       <TopBar />
 
       <div className="flex-1 max-w-5xl mx-auto w-full p-4 space-y-4">
-        <Breadcrumb
-          owner={owner}
-          repo={repo}
-          branch={branch}
-          path={filePath}
-          isFile
-        />
+        <div className="flex items-center gap-3">
+          <BranchSelector
+            owner={owner}
+            repo={repo}
+            currentRef={branch}
+            currentPath={filePath}
+            viewType="blob"
+          />
+          <Breadcrumb
+            owner={owner}
+            repo={repo}
+            branch={branch}
+            path={filePath}
+            isFile
+          />
+        </div>
 
         <CodeViewer file={file} />
       </div>

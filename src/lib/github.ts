@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest";
-import type { QuestRepo, RepoFile, FileContent, Commit, Contributor } from "./types";
+import type { QuestRepo, RepoFile, FileContent, Commit, Contributor, IssueItem, IssueListResult } from "./types";
 import { computeOpenIssues, parseLinkCount } from "./utils";
 
 function createOctokit(accessToken?: string) {
@@ -178,5 +178,110 @@ export async function fetchFileContent(
     content = Buffer.from(data.content, "base64").toString("utf-8");
   }
   return { name: data.name, path: data.path, content, size };
+}
+
+const ITEMS_PER_PAGE = 25;
+
+export async function fetchRepoIssues(
+  owner: string,
+  repo: string,
+  state: "open" | "closed",
+  page: number,
+  accessToken?: string,
+): Promise<IssueListResult> {
+  const octokit = createOctokit(accessToken);
+  const { data, headers } = await octokit.issues.listForRepo({
+    owner,
+    repo,
+    state,
+    per_page: ITEMS_PER_PAGE,
+    page,
+    sort: "created",
+    direction: "desc",
+  });
+
+  const filtered = data.filter((i) => !i.pull_request);
+  const linkHeader = headers.link ?? "";
+  const hasMore = linkHeader.includes('rel="next"');
+  const items: IssueItem[] = filtered.map((i) => ({
+    number: i.number,
+    title: i.title,
+    state: i.state as "open" | "closed",
+    author: i.user?.login ?? "Unknown",
+    authorAvatar: i.user?.avatar_url ?? null,
+    createdAt: i.created_at,
+    commentsCount: i.comments,
+    labels: (i.labels ?? [])
+      .map((l) => (typeof l === "string" ? null : { name: l.name ?? "", color: l.color ?? "333" }))
+      .filter((l): l is { name: string; color: string } => l !== null),
+    isPR: false,
+  }));
+
+  return { items, hasMore };
+}
+
+export async function fetchRepoPulls(
+  owner: string,
+  repo: string,
+  state: "open" | "closed",
+  page: number,
+  accessToken?: string,
+): Promise<IssueListResult> {
+  const octokit = createOctokit(accessToken);
+  const { data, headers } = await octokit.pulls.list({
+    owner,
+    repo,
+    state,
+    per_page: ITEMS_PER_PAGE,
+    page,
+    sort: "created",
+    direction: "desc",
+  });
+
+  const linkHeader = headers.link ?? "";
+  const hasMore = linkHeader.includes('rel="next"');
+  const items: IssueItem[] = data.map((p) => ({
+    number: p.number,
+    title: p.title,
+    state: p.state as "open" | "closed",
+    author: p.user?.login ?? "Unknown",
+    authorAvatar: p.user?.avatar_url ?? null,
+    createdAt: p.created_at,
+    commentsCount: 0,
+    labels: (p.labels ?? [])
+      .map((l) => (typeof l === "string" ? null : { name: l.name ?? "", color: l.color ?? "333" }))
+      .filter((l): l is { name: string; color: string } => l !== null),
+    isPR: true,
+  }));
+
+  return { items, hasMore };
+}
+
+export async function fetchBranches(
+  owner: string,
+  repo: string,
+  accessToken?: string,
+): Promise<string[]> {
+  const octokit = createOctokit(accessToken);
+  const { data } = await octokit.repos.listBranches({
+    owner,
+    repo,
+    per_page: 100,
+  });
+  return data.map((b) => b.name);
+}
+
+export async function fetchTags(
+  owner: string,
+  repo: string,
+  accessToken?: string,
+): Promise<string[]> {
+  const octokit = createOctokit(accessToken);
+  const { data } = await octokit.repos.listTags({
+    owner,
+    repo,
+    per_page: 100,
+  });
+  return data.map((t) => t.name);
 }
 
