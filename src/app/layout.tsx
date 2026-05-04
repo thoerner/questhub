@@ -4,6 +4,9 @@ import { MusicPlayer } from "@/components/rpg/music-player";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.AUTH_URL ?? "https://questhub.crypt0potam.us"
+  ),
   title: "QuestHub — Quest for Code",
   description:
     "A fantasy RPG-themed GitHub client. View any public repo as an adventure.",
