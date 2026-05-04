@@ -152,9 +152,17 @@ export function MusicPlayer() {
               </PlayerButton>
             </div>
             <div className="flex items-center gap-1">
-              <PlayerButton onClick={() => setIsLooping((prev) => !prev)} label={isLooping ? "Disable loop" : "Loop track"}>
-                <span className={isLooping ? "text-accent-gold" : ""}>🔁</span>
-              </PlayerButton>
+              <button
+                onClick={() => setIsLooping((prev) => !prev)}
+                aria-label={isLooping ? "Disable loop" : "Loop track"}
+                className={`w-7 h-7 flex items-center justify-center rounded-sm text-sm transition-colors cursor-pointer ${
+                  isLooping
+                    ? "bg-accent-gold/20 text-accent-gold border border-accent-gold-dim"
+                    : "text-text-secondary hover:text-accent-gold hover:bg-surface-overlay"
+                }`}
+              >
+                🔁
+              </button>
               <PlayerButton onClick={toggleMute} label={isMuted ? "Unmute" : "Mute"}>
                 {isMuted ? "🔇" : "🔊"}
               </PlayerButton>
