@@ -9,18 +9,23 @@ const TRACKS = [
   { src: "/audio/pull-request-parade.mp3", title: "Pull Request Parade" },
 ];
 
-function loadPrefs() {
-  if (typeof window === "undefined") return { trackIndex: 0, muted: false };
+type Prefs = { trackIndex: number; muted: boolean; looping: boolean };
+
+function loadPrefs(): Prefs {
+  if (typeof window === "undefined") return { trackIndex: 0, muted: false, looping: false };
   try {
     const raw = localStorage.getItem("qh-music");
-    if (raw) return JSON.parse(raw) as { trackIndex: number; muted: boolean };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { trackIndex: parsed.trackIndex ?? 0, muted: parsed.muted ?? false, looping: parsed.looping ?? false };
+    }
   } catch {}
-  return { trackIndex: 0, muted: false };
+  return { trackIndex: 0, muted: false, looping: false };
 }
 
-function savePrefs(trackIndex: number, muted: boolean) {
+function savePrefs(prefs: Prefs) {
   try {
-    localStorage.setItem("qh-music", JSON.stringify({ trackIndex, muted }));
+    localStorage.setItem("qh-music", JSON.stringify(prefs));
   } catch {}
 }
 
@@ -39,6 +44,7 @@ export function MusicPlayer() {
     const prefs = loadPrefs();
     setTrackIndex(prefs.trackIndex);
     setIsMuted(prefs.muted);
+    setIsLooping(prefs.looping);
 
     if (prefs.muted) return;
 
@@ -62,8 +68,8 @@ export function MusicPlayer() {
   }, []);
 
   useEffect(() => {
-    savePrefs(trackIndex, isMuted);
-  }, [trackIndex, isMuted]);
+    savePrefs({ trackIndex, muted: isMuted, looping: isLooping });
+  }, [trackIndex, isMuted, isLooping]);
 
   useEffect(() => {
     const audio = audioRef.current;
